@@ -8,7 +8,6 @@
 import re
 
 def test(s):
-	print s, len(s)
 	if re.search("<SELECT[^>]*>", s) >= 0:
 #		print s, len(s), "FAIL"
 		return "FAIL"
@@ -18,6 +17,8 @@ def test(s):
 
 def simplify(s):
 	assert test(s) == "FAIL"
+
+	print s, len(s)
 
 	split = len(s) / 2
 	s1 = s[:split]
@@ -31,7 +32,8 @@ def simplify(s):
 	return s
 
 # UNCOMMENT TO TEST
-html_input = '<SELECT>foo</SELECT>'
+html_input = '<SELECT><OPTION VALUE="simplify><OPTION VALUE="beautify"></SELECT>'
+#html_input = '<SELECT>foo</SELECT>'
 #html_input = '<SELECT>'
 print simplify(html_input)
 
