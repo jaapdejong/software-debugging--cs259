@@ -1,13 +1,13 @@
 #!/usr/bin/python 
-# Use supplied test_cases, `ddmin` and the given `mystery_test`
-# to find the minimal length string that causes
-# `mystery_test` to return 'FAIL'.
-# `mystery_test` takes 2 arguments:
-# first is test case index, second is test string.
-# The minimized test cases should go into the `answer`
-# variable in the same order as test_cases.
-# If your code Runs fine, but times out on Submit,
-# just copy the found strings in the answer variable.
+"""
+
+You should try to optimize your code from PS3-2 to get the correct
+answer in as few steps as possible.
+
+We will be hosting a scoreboard along with additional test cases
+from both us and other students on our forums. Go check it out!
+
+"""
 
 test_cases = ['<vbox><listbox rows="2"><listitem label="listitem"/><listitem><html:input type="checkbox" style="margin:0px;"/></listitem></listbox></vbox>',
               '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"><html><head><meta http-equiv="Content-Type" content="text/html;charset=utf-8"><title>wushi0016</title><script type="text/javascript">function goodbye() {nodeList = document.getElementsByTagName("input");testNode = nodeList.item(0);testNode.type = "yabba-dabba-do";return testNode.blur();}</script></head><body onload="goodbye()"><input type="file" /></body></html>',
@@ -19,6 +19,7 @@ from ps3_mystery import mystery_test as test
 import random
 
 def ddmin(s):
+	counter = 0
 	n = 2     # Initial granularity
 	while len(s) >= 2:
 		start = 0
@@ -26,12 +27,10 @@ def ddmin(s):
 		some_complement_is_failing = False
 
 		while start < len(s):
+			counter += 1
 			complement = s[:start] + s[start + subset_length:]
-
-			# MYSTERY test TAKES 2 ARGUMENTS
-			# FIRST IS TEST CASE INDEX
-			# SECOND IS THE STRING TO TEST
-			if test(i, complement) == "FAIL":
+			
+			if test(i, "".join(complement)) == "FAIL":
 				s = complement
 				n = max(n - 1, 2)
 				some_complement_is_failing = True
@@ -43,12 +42,30 @@ def ddmin(s):
 			if n == len(s):
 				break
 			n = min(n * 2, len(s))
-	return s
 
-answer = ['' for _ in test_cases] # YOUR ANSWER SHOULD GO IN THIS VARIABLE
+	return "".join(s), counter
+
+answer = ['' for _ in test_cases]
+counters = ['' for _ in test_cases]
+
+import re
 
 for i in range(len(test_cases)):
-	answer[i] = ddmin(test_cases[i])
-    
-print answer
+	answer[i], counters[i] = ddmin(test_cases[i])
+#	answer[i], counters[i] = ddmin(test_cases[i].split())
+#	answer[i], counters[i] = ddmin(re.findall(r"[\w']+", test_cases[i]))
+
+#	a1, c1 = ddmin(test_cases[i].split(' ', 1))
+#	answer[i], c2 = ddmin(a1)
+#	counters[i] = c1 + c2
+
+#	a1, c1 = ddmin(test_cases[i].split('>', 1))
+#	answer[i], c2 = ddmin(a1)
+#	counters[i] = c1 + c2
+
+#	a1, c1 = ddmin(re.split('[<>]+', test_cases[i]))
+#	answer[i], c2 = ddmin(a1)
+#	counters[i] = c1 + c2
+
+print answer, counters
 
