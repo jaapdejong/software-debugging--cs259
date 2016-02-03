@@ -16,9 +16,9 @@ import math
 # correlates the most with failure, fill in the following 3 variables,
 # Do NOT set these values dynamically.
 
-answer_function = "X"   # One of f1, f2, f3
-answer_bin = 42         # One of 1, 0, -1
-answer_value = 1.0000   # precision to 4 decimal places.
+answer_function = "f3"   # One of f1, f2, f3
+answer_bin = -1          # One of 1, 0, -1
+answer_value = 0.8165    # precision to 4 decimal places.
 
 # The buggy program
 def remove_html_markup(s):
@@ -51,10 +51,12 @@ def traceit(frame, event, arg):
 
     if event == "return":
         functionName = frame.f_code.co_name
-        functionReturn = arg
+        if arg < 0: bin = -1
+        elif arg > 0: bin = 1
+        else: bin = 0
         if not coverage.has_key(functionName):
             coverage[functionName] = {}
-        coverage[functionName] = functionReturn
+        coverage[functionName] = bin
         
     return traceit
 
@@ -65,11 +67,10 @@ def phi(n11, n10, n01, n00):
 
 # Print out values of phi, and result of runs for each covered line
 def print_tables(tables):
-    for filename in tables.keys():
-        lines = open(filename).readlines()
-        for i in range(23, 40): # lines of the remove_html_markup in this file
-            if tables[filename].has_key(i + 1):
-                (n11, n10, n01, n00) = tables[filename][i + 1]
+    for functionName in tables.keys():
+        for bin in range(-1,2):
+            if tables[functionName].has_key(bin):
+                (n11, n10, n01, n00) = tables[functionName][bin]
                 try:
                     factor = phi(n11, n10, n01, n00)
                     prefix = "%+.4f%2d%2d%2d%2d" % (factor, n11, n10, n01, n00)
@@ -79,7 +80,7 @@ def print_tables(tables):
             else:
                 prefix = "               "
                     
-            print prefix, lines[i],
+            print prefix, functionName, bin
                             
 # Run the program with each test case and record 
 # input, outcome and coverage of lines
@@ -98,31 +99,34 @@ def run_tests(inputs):
 def init_tables(runs):
     tables = {}
     for (input, outcome, coverage) in runs:
-        for functionName in coverage.iteritems():
-            if not tables.has_key(functionName):
-                tables[functionName] = (0, 0, 0, 0)
+        for functionName, bins in coverage.iteritems():
+            for bin in range(-1,2):
+                if not tables.has_key(functionName):
+                    tables[functionName] = {}
+                if not tables[functionName].has_key(bin):
+                    tables[functionName][bin] = (0, 0, 0, 0)
 
     return tables
 
 # Compute n11, n10, etc. for each line
 def compute_n(tables):
-    for functionName in tables.iteritems():
-        print tables[functionName]
-#        (n11, n10, n01, n00) = tables[functionName]
-#        for (input, outcome, coverage) in runs:
-#            if coverage.has_key(functionName):
-#                # Covered in this run
-#                if outcome == "FAIL":
-#                    n11 += 1  # covered and fails
-#                else:
-#                    n10 += 1  # covered and passes
-#            else:
-#                # Not covered in this run
-#                if outcome == "FAIL":
-#                    n01 += 1  # uncovered and fails
-#                else:
-#                    n00 += 1  # uncovered and passes
-#        tables[functionName] = (n11, n10, n01, n00)
+    for functionName, bins in tables.iteritems():
+        for bin in range(-1,2):
+            (n11, n10, n01, n00) = tables[functionName][bin]
+            for (input, outcome, coverage) in runs:
+                if coverage.has_key(functionName) and coverage[functionName] == bin:
+                    # Covered in this run
+                    if outcome == "FAIL":
+                        n11 += 1  # covered and fails
+                    else:
+                        n10 += 1  # covered and passes
+                else:
+                    # Not covered in this run
+                    if outcome == "FAIL":
+                        n01 += 1  # uncovered and fails
+                    else:
+                        n00 += 1  # uncovered and passes
+            tables[functionName][bin] = (n11, n10, n01, n00)
     return tables
       
 # Now compute (and report) phi for each line. The higher the value,
@@ -190,14 +194,11 @@ def f3(mn):
 
 #### my code
 runs = run_tests(inputs)
-print "runs:", runs
 
 tables = init_tables(runs)
-print "tables (init_tables):", tables
 
 tables = compute_n(tables)
-print "tables (compute_n):", tables
 
-#print_tables(tables)      
+print_tables(tables)      
             
 
