@@ -51,13 +51,25 @@ def debug(command, my_locals):
         return True
     elif command.startswith('p'):    # print 
         # FIRST ASSIGNMENT CODE
-        pass
+        if arg == None:
+            print my_locals
+        else:
+            if arg in my_locals:
+                print arg, "=", repr(my_locals[arg])
+            else:
+                print "No such variable:", arg
     elif command.startswith('b'):    # breakpoint         
         # SECOND ASSIGNMENT CODE
-        pass
+        if arg == None:
+            print "You must supply a variable name"
+        else:
+            watchpoints[arg] = True
     elif command.startswith('w'):    # watch variable
         # YOUR CODE HERE
-        
+        if arg == None:
+            print "You must supply a variable name"
+        else:
+            watchpoints[arg] = True
     elif command.startswith('q'):   # quit
         print "Exiting my-spyder..."
         sys.exit(0)
@@ -93,15 +105,25 @@ def traceit(frame, event, trace_arg):
         if stepping or breakpoints.has_key(frame.f_lineno):
             resume = False
             while not resume:
-                print event, frame.f_lineno, frame.f_code.co_name, frame.f_locals
+                print event, frame.f_lineno, frame.f_code.co_name
+                for variable in watchpoints:
+                    if variable in frame.f_locals:
+                        newValue = frame.f_locals[variable]
+                        if not variable in watch_values:
+                            print variable, ":", "Initialized", "=>", repr(newValue)
+                        else:
+                            oldValue = watch_values[variable]
+                            if oldValue != newValue:
+                                    print variable, ":", repr(oldValue), "=>", repr(newValue)
+                        watch_values[variable] = newValue
                 command = input_command()
                 resume = debug(command, frame.f_locals)
     return traceit
 
 # Using the tracer
-#sys.settrace(traceit)
-#main()
-#sys.settrace(None)
+sys.settrace(traceit)
+main()
+sys.settrace(None)
 
 # with the commands = ["w c", "c", "c", "w out", "c", "c", "c", "q"],
 # the output should look like this (line numbers may be different):
@@ -117,3 +139,4 @@ def traceit(frame, event, trace_arg):
 #line 21 remove_html_markup
 #out : '' => '<'
 #Exiting my-spyder...
+
