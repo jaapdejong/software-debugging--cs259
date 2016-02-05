@@ -102,20 +102,20 @@ def traceit(frame, event, trace_arg):
     global stepping
 
     if event == 'line':
+        print event, frame.f_lineno, frame.f_code.co_name
+        for variable in watchpoints:
+            if variable in frame.f_locals:
+                newValue = frame.f_locals[variable]
+                if not variable in watch_values:
+                    print variable, ":", "Initialized", "=>", repr(newValue)
+                else:
+                    oldValue = watch_values[variable]
+                    if oldValue != newValue:
+                            print variable, ":", repr(oldValue), "=>", repr(newValue)
+                watch_values[variable] = newValue
         if stepping or breakpoints.has_key(frame.f_lineno):
             resume = False
             while not resume:
-                print event, frame.f_lineno, frame.f_code.co_name
-                for variable in watchpoints:
-                    if variable in frame.f_locals:
-                        newValue = frame.f_locals[variable]
-                        if not variable in watch_values:
-                            print variable, ":", "Initialized", "=>", repr(newValue)
-                        else:
-                            oldValue = watch_values[variable]
-                            if oldValue != newValue:
-                                    print variable, ":", repr(oldValue), "=>", repr(newValue)
-                        watch_values[variable] = newValue
                 command = input_command()
                 resume = debug(command, frame.f_locals)
     return traceit
