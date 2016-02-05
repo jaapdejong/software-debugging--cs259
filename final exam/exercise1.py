@@ -63,15 +63,42 @@ def debug(command, my_locals):
         stepping = False
         return True
     elif command.startswith('p'):    # print 
-        # PS1 CODE
-        pass
+        if arg == None:
+            print my_locals
+        else:
+            if arg in my_locals:
+                print arg, "=", repr(my_locals[arg])
+            else:
+                print "No such variable:", arg
     elif command.startswith('b'):    # breakpoint         
-        # PS1 CODE
-        pass
+        if arg == None:
+            print "You must supply a line number"
+        else:
+            breakpoints[int(arg)] = True
     elif command.startswith('w'):    # watch variable
-        # PS1 CODE
+        if arg == None:
+            print "You must supply a variable name"
+        else:
+            watchpoints[arg] = True
     elif command.startswith('d'):    # delete watch/break point
         # YOUR CODE HERE
+        if arg == None:
+            print "Incorrect command"
+        if arg == 'b':
+            argument = int(command.split(' ')[2])
+            print argument, breakpoints
+            if not argument in breakpoints:
+                print "No such breakpoint defined", repr(argument)
+            else:
+                del breakpoints[argument]
+        elif arg == 'w':
+            variable = command.split(' ')[2]
+            if not variable in watchpoints:
+                print variable, "is not defined as watchpoint"
+            else:
+                del watchpoints[variable]
+        else:
+            print "Incorrect command"        
     elif command.startswith('q'):   # quit
         print "Exiting my-spyder..."
         sys.exit(0)
@@ -104,9 +131,9 @@ def traceit(frame, event, trace_arg):
     return traceit
 
 # Using the tracer
-#sys.settrace(traceit)
-#main()
-#sys.settrace(None)
+sys.settrace(traceit)
+main()
+sys.settrace(None)
 
 #Simple test
 watchpoints = {'s': True}
