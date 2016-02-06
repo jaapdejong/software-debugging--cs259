@@ -70,7 +70,9 @@ def traceit(frame, event, arg):
     global coverage
 
     # YOUR CODE HERE
-        
+    if event == "line":
+        coverage.append(frame.f_lineno)
+
     return traceit
 
 # We use these variables to communicate between callbacks and drivers
@@ -153,12 +155,21 @@ def make_locations(coverage):
     # This function should return a list of tuples in the format
     # [(line, iteration), (line, iteration) ...], as auto_cause_chain
     # expects.
+    locations = []
+    iterations = {}
+    for line in coverage:
+        if not line in iterations:
+            iterations[line] = 1
+        else:
+            iterations[line] += 1
+    	locations.append((line, iterations[line]))
     return locations
 
 def auto_cause_chain(locations):
     global html_fail, html_pass, the_input, the_line, the_iteration, the_diff
     print "The program was started with", repr(html_fail)
 
+    variables = {}
     # Test over multiple locations
     for (line, iteration) in locations:
 
@@ -184,6 +195,14 @@ def auto_cause_chain(locations):
         #    cause = ddmin(diffs)
         #    # Pretty output
         #    print "Then", var, "became", repr(value)
+
+        if diffs != []:
+            cause = ddmin(diffs)
+            if test(cause) == "FAIL":
+                for (var, value) in cause:
+                    if not var in variables or variables[var] != value:
+                        print "Then", var, "became", repr(value)
+                    variables[var] = value
             
     print "Then the program failed."
 
