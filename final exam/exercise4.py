@@ -18,13 +18,191 @@ import math
 # in the variables below. 
 # Do NOT set these values dynamically.
 
-answer_function = "f5"   # One of f1, f2, f3
-answer_bin = 42          # One of 1, 0, -1
-answer_function_phi = 42.0000    # precision to 4 decimal places.
-answer_line_phi = 42.0000 # precision to 4 decimal places.
+answer_function = "f2"   # One of f1, f2, f3
+answer_bin = -1          # One of 1, 0, -1
+answer_function_phi = 0.6547  # precision to 4 decimal places.
+answer_line_phi = 0.6547      # precision to 4 decimal places.
 # if there are several lines with the same phi value, put them in a list,
 # no leading whitespace is required
-answer_line = ["if False:", 'return "FAIL"']  # lines of code
+answer_line = ['return "FAIL"', 'return "FAIL"', 'elif other < 1:', 'grade -= 1']  # lines of code
+
+# the correct values according to udacity are:
+#answer_line_phi = 1.0000      # precision to 4 decimal places.
+#answer_line = ['elif other < 1:', 'grade -= 1']  # lines of code
+
+# answer_line_phi and answer_line are from the list below
+# there must be an error in it...
+####	### Lines ###
+#### >>	+0.6547 1 0 1 6         return "FAIL"
+####	-0.6547 1 6 1 0     elif (r1 + r2 + r3) < 0:
+#### >>	+0.6547 1 0 1 6         return "FAIL"
+####	-1.0000 0 6 2 0     elif r1 == 0 and r2 == 0:
+####	-1.0000 0 6 2 0         return "PASS"
+####	-0.3333 0 2 2 4         return 1
+####	+0.3333 2 4 0 2         return 0
+####	+0.2182 2 5 0 1         elif c.isalpha():
+####	+0.3333 2 4 0 2             letters += 1
+####	-0.6547 1 6 1 0         grade += 1 
+#### >>	+0.6547 1 0 1 6     elif other < 1:
+#### >>	+0.6547 1 0 1 6         grade -= 1
+####	+0.3333 1 1 1 5             grade -= 1
+####	-0.3333 0 2 2 4         grade += 1
+
+# answer_function, answer_bin and answer_function_phi are from the list below
+####	### Functions ###
+####	+0.3333 2 4 0 2 f1 0
+####	-0.3333 0 2 2 4 f1 1
+#### >>	+0.6547 1 0 1 6 f2 -1
+####	-0.6547 1 6 1 0 f2 1
+#### >>	+0.6547 1 0 1 6 f3 -1
+####	-0.3333 1 5 1 1 f3 0
+####	-0.2182 0 1 2 5 f3 1
+
+
+# The buggy program
+def remove_html_markup(s):
+    tag   = False
+    quote = False
+    out   = ""
+
+    for c in s:
+
+        if c == '<' and not quote:
+            tag = True
+        elif c == '>' and not quote:
+            tag = False
+        elif c == '"' or c == "'" and tag:
+            quote = not quote
+        elif not tag:
+            out = out + c
+
+    return out
+
+
+# global variable to keep the coverage data in
+coverage = {}
+coverageFunctions = {}
+# Tracing function that saves the coverage data
+# To track function calls, you will have to check 'if event == "call"', and in 
+# that case the variable arg will hold the return value of the function,
+# and frame.f_code.co_name will hold the function name
+def traceit(frame, event, arg):
+    global coverage
+    global coverageFunctions
+
+    if event == "line":
+        filename = frame.f_code.co_filename
+        lineno   = frame.f_lineno
+        if not coverage.has_key(filename):
+            coverage[filename] = {}
+        coverage[filename][lineno] = True
+
+    elif event == "return":
+        functionName = frame.f_code.co_name
+        if arg < 0: bin = -1
+        elif arg > 0: bin = 1
+        else: bin = 0
+        if not coverageFunctions.has_key(functionName):
+            coverageFunctions[functionName] = {}
+        coverageFunctions[functionName] = bin
+        
+    return traceit
+
+# Calculate phi coefficient from given values            
+def phi(n11, n10, n01, n00):
+    return ((n11 * n00 - n10 * n01) / 
+             math.sqrt((n10 + n11) * (n01 + n00) * (n10 + n00) * (n01 + n11)))
+
+# Print out values of phi, and result of runs for each covered line
+def print_tables(tables):
+    for filename in tables.keys():
+        lines = open(filename).readlines()
+        for i in range(1, len(lines)):
+            if tables[filename].has_key(i + 1):
+                (n11, n10, n01, n00) = tables[filename][i + 1]
+                try:
+                    factor = phi(n11, n10, n01, n00)
+                    prefix = "%+.4f%2d%2d%2d%2d" % (factor, n11, n10, n01, n00)
+                    print prefix, lines[i],
+                except:
+                    prefix = "       %2d%2d%2d%2d" % (n11, n10, n01, n00)
+                    
+            else:
+                prefix = "               "
+                    
+            #print prefix, lines[i],
+
+# Run the program with each test case and record 
+# input, outcome and coverage of lines
+def run_tests(inputs):
+    runs = []
+    runsFunctions = []
+    for input in inputs:
+        global coverage
+        global coverageFunctions
+        coverage = {}
+        coverageFunctions = {}
+        sys.settrace(traceit)
+        outcome = mystery(input)
+        sys.settrace(None)
+        runs.append((input, outcome, coverage))
+        runsFunctions.append((input, outcome, coverageFunctions))
+    return runs, runsFunctions
+
+# Create empty tuples for each covered line
+def init_tables(runs):
+    tables = {}
+    for (input, outcome, coverage) in runs:
+        for filename, lines in coverage.iteritems():
+            for line in lines.keys():
+                if not tables.has_key(filename):
+                    tables[filename] = {}
+                if not tables[filename].has_key(line):
+                    tables[filename][line] = (0, 0, 0, 0)
+
+    return tables
+
+# Compute n11, n10, etc. for each line
+def compute_n(tables):
+    for filename, lines in tables.iteritems():
+        for line in lines.keys():
+            (n11, n10, n01, n00) = tables[filename][line]
+            for (input, outcome, coverage) in runs:
+                if coverage.has_key(filename) and coverage[filename].has_key(line):
+                    # Covered in this run
+                    if outcome == "FAIL":
+                        n11 += 1  # covered and fails
+                    else:
+                        n10 += 1  # covered and passes
+                else:
+                    # Not covered in this run
+                    if outcome == "FAIL":
+                        n01 += 1  # uncovered and fails
+                    else:
+                        n00 += 1  # uncovered and passes
+            tables[filename][line] = (n11, n10, n01, n00)
+    return tables
+
+# These are the test cases for the remove_html_input function          
+#inputs_line = ['foo', 
+#          '<b>foo</b>', 
+#          '"<b>foo</b>"', 
+#          '"foo"', 
+#          "'foo'", 
+#          '<em>foo</em>', 
+#          '<a href="foo">foo</a>',
+#          '""',
+#          "<p>"]
+#runs = run_tests(inputs_line)
+#
+#tables = init_tables(runs)
+#
+#tables = compute_n(tables)
+#
+#print_tables(tables)      
+            
+# These are the input values you should test the mystery function with
+inputs = ["aaaaa223%", "aaaaaaaatt41@#", "asdfgh123!", "007001007", "143zxc@#$ab", "3214&*#&!(", "qqq1dfjsns", "12345%@afafsaf"]
 
 ###### MYSTERY FUNCTION
 
@@ -86,102 +264,8 @@ def f3(mn):
         grade += 1
     return grade
 
-# global variable to keep the coverage data in
-coverage = {}
-coverageFunctions = {}
-# Tracing function that saves the coverage data
-# To track function calls, you will have to check 'if event == "call"', and in 
-# that case the variable arg will hold the return value of the function,
-# and frame.f_code.co_name will hold the function name
-def traceit(frame, event, arg):
-    global coverage
-    global coverageFunctions
-
-    if event == "line":
-        filename = frame.f_code.co_filename
-        lineno   = frame.f_lineno
-        if not coverage.has_key(filename):
-            coverage[filename] = {}
-        coverage[filename][lineno] = True
-
-    elif event == "return":
-        functionName = frame.f_code.co_name
-        if arg < 0: bin = -1
-        elif arg > 0: bin = 1
-        else: bin = 0
-        if not coverageFunctions.has_key(functionName):
-            coverageFunctions[functionName] = {}
-        coverageFunctions[functionName] = bin
-        
-    return traceit
-
-# Calculate phi coefficient from given values            
-def phi(n11, n10, n01, n00):
-    return ((n11 * n00 - n10 * n01) / 
-             math.sqrt((n10 + n11) * (n01 + n00) * (n10 + n00) * (n01 + n11)))
-
-# Print out values of phi, and result of runs for each covered line
-def print_tables(tables, tablesFunctions):
-    for filename in tables.keys():
-        lines = open(filename).readlines()
-        for i in range(32, 88): # lines of the mystery function in this file
-            if tables[filename].has_key(i + 1):
-                (n11, n10, n01, n00) = tables[filename][i + 1]
-                try:
-                    factor = phi(n11, n10, n01, n00)
-                    prefix = "%+.4f%2d%2d%2d%2d" % (factor, n11, n10, n01, n00)
-                except:
-                    prefix = "       %2d%2d%2d%2d" % (n11, n10, n01, n00)
-                    
-            else:
-                prefix = "               "
-                    
-            print prefix, lines[i],
-            
-    for functionName in tablesFunctions.keys():
-        for bin in range(-1,2):
-            if tablesFunctions[functionName].has_key(bin):
-                (n11, n10, n01, n00) = tablesFunctions[functionName][bin]
-                try:
-                    factor = phi(n11, n10, n01, n00)
-                    prefix = "%+.4f%2d%2d%2d%2d" % (factor, n11, n10, n01, n00)
-                except:
-                    prefix = "       %2d%2d%2d%2d" % (n11, n10, n01, n00)
-                    
-            else:
-                prefix = "               "
-                    
-            print prefix, functionName, bin
-
-# Run the program with each test case and record 
-# input, outcome and coverage of lines
-def run_tests(inputs):
-    runs = []
-    runsFunctions = []
-    for input in inputs:
-        global coverage
-        global coverageFunctions
-        coverage = {}
-        coverageFuncitons = {}
-        sys.settrace(traceit)
-        outcome = mystery(input)
-        sys.settrace(None)
-        runs.append((input, outcome, coverage))
-        runsFunctions.append((input, outcome, coverageFunctions))
-#        print "run_tests:", input, outcome, coverageFunctions
-    return runs, runsFunctions
-
 # Create empty tuples for each covered line
-def init_tables(runs, runsFunctions):
-    tables = {}
-    for (input, outcome, coverage) in runs:
-        for filename, lines in coverage.iteritems():
-            for line in lines.keys():
-                if not tables.has_key(filename):
-                    tables[filename] = {}
-                if not tables[filename].has_key(line):
-                    tables[filename][line] = (0, 0, 0, 0)
-
+def init_tablesFunctions(runsFunctions):
     tablesFunctions = {}
     for (input, outcome, coverageFunctions) in runsFunctions:
         for functionName, bins in coverageFunctions.iteritems():
@@ -191,28 +275,10 @@ def init_tables(runs, runsFunctions):
                 if not tablesFunctions[functionName].has_key(bin):
                     tablesFunctions[functionName][bin] = (0, 0, 0, 0)
 
-    return tables, tablesFunctions
+    return tablesFunctions
 
 # Compute n11, n10, etc. for each line
-def compute_n(tables, tablesFunctions):
-    for filename, lines in tables.iteritems():
-        for line in lines.keys():
-            (n11, n10, n01, n00) = tables[filename][line]
-            for (input, outcome, coverage) in runs:
-                if coverage.has_key(filename) and coverage[filename].has_key(line):
-                    # Covered in this run
-                    if outcome == "FAIL":
-                        n11 += 1  # covered and fails
-                    else:
-                        n10 += 1  # covered and passes
-                else:
-                    # Not covered in this run
-                    if outcome == "FAIL":
-                        n01 += 1  # uncovered and fails
-                    else:
-                        n00 += 1  # uncovered and passes
-            tables[filename][line] = (n11, n10, n01, n00)
-
+def compute_nFunctions(tablesFunctions):
     for functionName, bins in tablesFunctions.iteritems():
         for bin in range(-1,2):
             (n11, n10, n01, n00) = tablesFunctions[functionName][bin]
@@ -224,7 +290,6 @@ def compute_n(tables, tablesFunctions):
                     else:
                         n10 += 1  # covered and passes
                 else:
-#                    print "compute_n", input, outcome, coverageFunctions
                     # Not covered in this run
                     if outcome == "FAIL":
                         n01 += 1  # uncovered and fails
@@ -232,17 +297,40 @@ def compute_n(tables, tablesFunctions):
                         n00 += 1  # uncovered and passes
             tablesFunctions[functionName][bin] = (n11, n10, n01, n00)
 
-    return tables, tablesFunctions
-      
-# These are the input values you should test the mystery function with
-inputs = ["aaaaa223%", "aaaaaaaatt41@#", "asdfgh123!", "007001007", "143zxc@#$ab", "3214&*#&!(", "qqq1dfjsns", "12345%@afafsaf"]
+    return tablesFunctions
 
+# Print out values of phi, and result of runs for each covered line
+def print_tablesFunctions(tablesFunctions):
+    for functionName in tablesFunctions.keys():
+        for bin in range(-1,2):
+            if tablesFunctions[functionName].has_key(bin):
+                (n11, n10, n01, n00) = tablesFunctions[functionName][bin]
+                try:
+                    factor = phi(n11, n10, n01, n00)
+                    prefix = "%+.4f%2d%2d%2d%2d" % (factor, n11, n10, n01, n00)
+                    print prefix, functionName, bin
+                except:
+                    prefix = "       %2d%2d%2d%2d" % (n11, n10, n01, n00)
+                    
+            else:
+                prefix = "               "
+                    
+            #print prefix, functionName, bin
+
+# go ahead!
+print "### Run ###"
 runs, runsFunctions = run_tests(inputs)
+print
 
-tables, tablesFunctions = init_tables(runs, runsFunctions)
+print "### Lines ###"
+tables = init_tables(runs)
+tables = compute_n(tables)
+print_tables(tables)
+print
 
-tables, tablesFunctions = compute_n(tables, tablesFunctions)
-
-print_tables(tables, tablesFunctions)
-
+print "### Functions ###"
+tablesFunctions = init_tablesFunctions(runsFunctions)
+tablesFunctions = compute_nFunctions(tablesFunctions)
+print_tablesFunctions(tablesFunctions)
+print
 
