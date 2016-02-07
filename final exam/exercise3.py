@@ -176,33 +176,36 @@ def auto_cause_chain(locations):
         # Get the passing and the failing state
         state_pass = get_state(html_pass, line, iteration)
         state_fail = get_state(html_fail, line, iteration)
-    
-        # Compute the differences
-        diffs = []
-        for var in state_fail.keys():
-            if not state_pass.has_key(var) or state_pass[var] != state_fail[var]:
-                diffs.append((var, state_fail[var]))
- 
-        # Minimize the failure-inducing set of differences
-        # Since this time you have all the covered lines and iterations in
-        # locations, you will have to figure out how to automatically detect
-        # which lines/iterations are the ones that are part of the
-        # failure chain and print out only these.
-        the_input = html_pass
-        the_line  = line
-        the_iteration  = iteration
-        # You will have to use the following functions and output formatting:
-        #    cause = ddmin(diffs)
-        #    # Pretty output
-        #    print "Then", var, "became", repr(value)
 
-        if diffs != []:
-            cause = ddmin(diffs)
-            if test(cause) == "FAIL":
-                for (var, value) in cause:
-                    if not var in variables or variables[var] != value:
-                        print "Then", var, "became", repr(value)
-                    variables[var] = value
+        try:
+            # Compute the differences
+            diffs = []
+            for var in state_fail.keys():
+                if not state_pass.has_key(var) or state_pass[var] != state_fail[var]:
+                    diffs.append((var, state_fail[var]))
+
+            # Minimize the failure-inducing set of differences
+            # Since this time you have all the covered lines and iterations in
+            # locations, you will have to figure out how to automatically detect
+            # which lines/iterations are the ones that are part of the
+            # failure chain and print out only these.
+            the_input = html_pass
+            the_line  = line
+            the_iteration  = iteration
+            # You will have to use the following functions and output formatting:
+            #    cause = ddmin(diffs)
+            #    # Pretty output
+            #    print "Then", var, "became", repr(value)
+            if diffs != []:
+                cause = ddmin(diffs)
+                if test(cause) == "FAIL":
+                    for var, value in cause:
+                        if not var in variables or variables[var] != value:
+                            print "Then", var, "became", repr(value)
+                        variables[var] = value
+
+        except AttributeError, e:
+            pass
             
     print "Then the program failed."
 
