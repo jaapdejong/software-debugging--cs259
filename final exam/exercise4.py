@@ -26,7 +26,6 @@ answer_line_phi = 42.0000 # precision to 4 decimal places.
 # no leading whitespace is required
 answer_line = ["if False:", 'return "FAIL"']  # lines of code
 
-
 ###### MYSTERY FUNCTION
 
 def mystery(magic):
@@ -89,12 +88,14 @@ def f3(mn):
 
 # global variable to keep the coverage data in
 coverage = {}
+coverageFunctions = {}
 # Tracing function that saves the coverage data
 # To track function calls, you will have to check 'if event == "call"', and in 
 # that case the variable arg will hold the return value of the function,
 # and frame.f_code.co_name will hold the function name
 def traceit(frame, event, arg):
     global coverage
+    global coverageFunctions
 
     if event == "line":
         filename = frame.f_code.co_filename
@@ -102,6 +103,15 @@ def traceit(frame, event, arg):
         if not coverage.has_key(filename):
             coverage[filename] = {}
         coverage[filename][lineno] = True
+
+    elif event == "return":
+        functionName = frame.f_code.co_name
+        if arg < 0: bin = -1
+        elif arg > 0: bin = 1
+        else: bin = 0
+        if not coverageFunctions.has_key(functionName):
+            coverageFunctions[functionName] = {}
+        coverageFunctions[functionName] = bin
         
     return traceit
 
@@ -111,10 +121,10 @@ def phi(n11, n10, n01, n00):
              math.sqrt((n10 + n11) * (n01 + n00) * (n10 + n00) * (n01 + n11)))
 
 # Print out values of phi, and result of runs for each covered line
-def print_tables(tables):
+def print_tables(tables, tablesFunctions):
     for filename in tables.keys():
         lines = open(filename).readlines()
-        for i in range(31, 47): # lines of the remove_html_markup in this file
+        for i in range(32, 88): # lines of the mystery function in this file
             if tables[filename].has_key(i + 1):
                 (n11, n10, n01, n00) = tables[filename][i + 1]
                 try:
@@ -127,28 +137,42 @@ def print_tables(tables):
                 prefix = "               "
                     
             print prefix, lines[i],
-                            
+            
+    for functionName in tablesFunctions.keys():
+        for bin in range(-1,2):
+            if tablesFunctions[functionName].has_key(bin):
+                (n11, n10, n01, n00) = tablesFunctions[functionName][bin]
+                try:
+                    factor = phi(n11, n10, n01, n00)
+                    prefix = "%+.4f%2d%2d%2d%2d" % (factor, n11, n10, n01, n00)
+                except:
+                    prefix = "       %2d%2d%2d%2d" % (n11, n10, n01, n00)
+                    
+            else:
+                prefix = "               "
+                    
+            print prefix, functionName, bin
+
 # Run the program with each test case and record 
 # input, outcome and coverage of lines
 def run_tests(inputs):
-    runs   = []
+    runs = []
+    runsFunctions = []
     for input in inputs:
         global coverage
+        global coverageFunctions
         coverage = {}
+        coverageFuncitons = {}
         sys.settrace(traceit)
-        result = mystery(input)
+        outcome = mystery(input)
         sys.settrace(None)
-        
-        if result.find('<') == -1:
-            outcome = "PASS"
-        else:
-            outcome = "FAIL"
-        
         runs.append((input, outcome, coverage))
-    return runs
+        runsFunctions.append((input, outcome, coverageFunctions))
+#        print "run_tests:", input, outcome, coverageFunctions
+    return runs, runsFunctions
 
 # Create empty tuples for each covered line
-def init_tables(runs):
+def init_tables(runs, runsFunctions):
     tables = {}
     for (input, outcome, coverage) in runs:
         for filename, lines in coverage.iteritems():
@@ -158,10 +182,19 @@ def init_tables(runs):
                 if not tables[filename].has_key(line):
                     tables[filename][line] = (0, 0, 0, 0)
 
-    return tables
+    tablesFunctions = {}
+    for (input, outcome, coverageFunctions) in runsFunctions:
+        for functionName, bins in coverageFunctions.iteritems():
+            for bin in range(-1,2):
+                if not tablesFunctions.has_key(functionName):
+                    tablesFunctions[functionName] = {}
+                if not tablesFunctions[functionName].has_key(bin):
+                    tablesFunctions[functionName][bin] = (0, 0, 0, 0)
+
+    return tables, tablesFunctions
 
 # Compute n11, n10, etc. for each line
-def compute_n(tables):
+def compute_n(tables, tablesFunctions):
     for filename, lines in tables.iteritems():
         for line in lines.keys():
             (n11, n10, n01, n00) = tables[filename][line]
@@ -179,17 +212,37 @@ def compute_n(tables):
                     else:
                         n00 += 1  # uncovered and passes
             tables[filename][line] = (n11, n10, n01, n00)
-    return tables
+
+    for functionName, bins in tablesFunctions.iteritems():
+        for bin in range(-1,2):
+            (n11, n10, n01, n00) = tablesFunctions[functionName][bin]
+            for (input, outcome, coverageFunctions) in runsFunctions:
+                if coverageFunctions.has_key(functionName) and coverageFunctions[functionName] == bin:
+                    # Covered in this run
+                    if outcome == "FAIL":
+                        n11 += 1  # covered and fails
+                    else:
+                        n10 += 1  # covered and passes
+                else:
+#                    print "compute_n", input, outcome, coverageFunctions
+                    # Not covered in this run
+                    if outcome == "FAIL":
+                        n01 += 1  # uncovered and fails
+                    else:
+                        n00 += 1  # uncovered and passes
+            tablesFunctions[functionName][bin] = (n11, n10, n01, n00)
+
+    return tables, tablesFunctions
       
 # These are the input values you should test the mystery function with
 inputs = ["aaaaa223%", "aaaaaaaatt41@#", "asdfgh123!", "007001007", "143zxc@#$ab", "3214&*#&!(", "qqq1dfjsns", "12345%@afafsaf"]
 
-runs = run_tests(inputs)
+runs, runsFunctions = run_tests(inputs)
 
-tables = init_tables(runs)
+tables, tablesFunctions = init_tables(runs, runsFunctions)
 
-tables = compute_n(tables)
+tables, tablesFunctions = compute_n(tables, tablesFunctions)
 
-print_tables(tables)      
+print_tables(tables, tablesFunctions)
 
 
